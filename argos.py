@@ -6,6 +6,7 @@ from __future__ import absolute_import
 
 import logging
 import salt.client
+from time import strftime
 from salt.exceptions import SaltClientError
 
 LOG = logging.getLogger(__name__)
@@ -47,6 +48,8 @@ def panoptes(tgt, targets=[], algo='', *args, **kwargs):
     Too soon!
     '''
     checksum = {}
+    timestamp = strftime("%Y-%m-%d %H:%M:%S")
+
     if not targets:
         targets = _get_targets()
 
@@ -56,13 +59,11 @@ def panoptes(tgt, targets=[], algo='', *args, **kwargs):
     client = salt.client.LocalClient()
     try:
         output = client.cmd(tgt, 'fim.checksum', kwarg={'targets': targets, 'algo': algo}, timeout=__opts__['timeout'], expr_form='compound')
-        for minion, path in output.iteritems():
-            if not minion in checksum:
-                checksum.update({minion: {}})
-            if not 'files' in checksum[minion]:
-                checksum[minion].update({'files': []})
-            for key, val in path.iteritems():
-                checksum[minion]['files'].append({'filename': key, 'checksum': val, 'algo': algo})
+        for minion, target in output.iteritems():
+            checksum.update({minion: {'files': []}})
+            for path, stats in target.iteritems():
+                checksum[minion]['files'].append(stats)
+            checksum[minion]['files'].append({'timestamp':timestamp})
 
     except SaltClientError as client_error:
         LOG.debug(client_error)
