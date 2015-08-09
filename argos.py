@@ -16,58 +16,55 @@ __virtualname__ = 'argos'
 
 def __virtual__():
     '''
-    Load the fim client
+    Load the argos runner
     '''
     return __virtualname__
 
 
-def _get_targets():
+def fim(tgt, targets=[], algo='sha256', filename='', *args, **kwargs):
     '''
-    Query master config for possible config options
-    '''
-    targets = []
-    if __opts__['fim']['targets']:
-        targets = __opts__['fim']['targets']
-
-    return targets
-
-
-def _get_algo():
-    '''
-    Query master config for possible config options
-    '''
-    algo = ''
-    if __opts__['fim']['algo']:
-        algo = __opts__['fim']['algo']
-
-    return algo
-
-
-def panoptes(tgt, targets=[], algo='', *args, **kwargs):
-    '''
-    Too soon!
+    FIM collection runner
     '''
     checksum = {}
     timestamp = strftime("%Y-%m-%d %H:%M:%S")
 
+    ## check for preconfigured targets
     if not targets:
-        targets = _get_targets()
+        try:
+            if __opts__['fim']['targets']:
+                targets = __opts__['fim']['targets']
+        except:
+            return 'No targets defined. Exiting'
 
+    ## check for preconfigured algos
     if not algo:
-        algo = _get_algo()
+        try:
+            if __opts__['fim']['algo']:
+                algo = __opts__['fim']['algo']
+        except KeyError:
+            LOG.debug('No algorithm defined. Defaulting to sha256')
 
+    ## check for preconfigured filename
+    if not filename:
+        try:
+            if __opts__['fim']['filename']:
+                filename = __opts__['fim']['filename']
+        except KeyError:
+            LOG.debug('No filename defined. Sending to stdout')
+
+    ## spin up Salt client
     client = salt.client.LocalClient()
     try:
-        output = client.cmd(tgt, 'fim.checksum', kwarg={'targets': targets, 'algo': algo}, timeout=__opts__['timeout'], expr_form='compound')
-        for minion, target in output.iteritems():
-            checksum.update({minion: {'files': []}})
-            for path, stats in target.iteritems():
-                checksum[minion]['files'].append(stats)
-            checksum[minion]['files'].append({'timestamp':timestamp})
+        output = client.cmd(tgt, 'fim.checksum', kwarg={'targets': targets, 'algo': algo, 'filename': filename}, timeout=__opts__['timeout'], expr_form='compound')
+
+        ## if filename configured, collect all written files
+        if filename:
+            collection = client.cmd(tgt, 'cp.push', [filename], timeout=__opts__['timeout'])
+            return collection
 
     except SaltClientError as client_error:
         LOG.debug(client_error)
         return ret
 
-    return checksum
+    return output
 
