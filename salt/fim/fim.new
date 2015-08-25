@@ -1,0 +1,6 @@
+{% set data = salt['fim.checksum']() -%}
+{% for path, stats in data.items() -%}
+{% for key, value in stats.items() -%}
+{{ value }}
+{% endfor -%}
+{% endfor -%}
