@@ -75,7 +75,7 @@ format. This format is described below:
     
     fim_diff:
       salt.state:
-        - tgt: emma
+        - tgt: {{ salt['config.get']('master') }}
         - sls:
           - fim.diff
         - require:
@@ -83,7 +83,7 @@ format. This format is described below:
     
     fim.rotate:
       salt.function:
-        - tgt: emma
+        - tgt: {{ salt['config.get']('master') }}
         - require:
           - salt: fim_diff
 
